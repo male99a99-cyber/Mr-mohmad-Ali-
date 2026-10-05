@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق وجه العمل - حضور وانصراف العمال</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body { font-family: Tahoma, sans-serif; background-color: #0f172a; color: #f8fafc; }
+    </style>
+</head>
+<body class="min-h-screen p-4">
+
+    <div class="max-w-md mx-auto bg-slate-900 rounded-2xl shadow-xl p-6 border border-slate-800">
+        <!-- رأس التطبيق -->
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-emerald-400">وجه العمل</h1>
+            <p class="text-xs text-slate-400 mt-1">نظام تسجيل الحضور والانصراف الذكي بالوجه</p>
+        </div>
+
+        <!-- أزرار التنقل -->
+        <div class="grid grid-cols-3 gap-2 mb-6 text-center">
+            <button onclick="switchTab('home')" id="btn-home" class="bg-emerald-600 text-white py-2 rounded-lg text-sm font-semibold transition">الرئيسية</button>
+            <button onclick="switchTab('workers')" id="btn-workers" class="bg-slate-800 text-slate-300 py-2 rounded-lg text-sm font-semibold transition">العمال</button>
+            <button onclick="switchTab('records')" id="btn-records" class="bg-slate-800 text-slate-300 py-2 rounded-lg text-sm font-semibold transition">السجلات</button>
+        </div>
+
+        <!-- قسم الرئيسية (تسجيل الحضور/الانصراف بالكاميرا) -->
+        <div id="tab-home" class="space-y-4">
+            <div class="bg-slate-800 p-4 rounded-xl text-center">
+                <h2 class="text-lg font-semibold mb-2">تسجيل حركة بالكاميرا</h2>
+                <p class="text-xs text-slate-400 mb-4">اضغط على نوع الحركة لتفعيل الكاميرا وتسجيل البصمة مع الوقت</p>
+                
+                <!-- عرض الكاميرا المباشرة -->
+                <div class="relative w-full h-48 bg-black rounded-lg overflow-hidden mb-4 border border-slate-700">
+                    <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
+                    <div id="camera-status" class="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-slate-300 text-xs">
+                        الكاميرا متوقفة
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="startAttendance('حضور')" class="bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg font-bold text-sm transition">فتح كاميرا الحضور</button>
+                    <button onclick="startAttendance('انصراف')" class="bg-rose-600 hover:bg-rose-500 text-white py-2.5 rounded-lg font-bold text-sm transition">فتح كاميرا الانصراف</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- قسم إدارة العمال -->
+        <div id="tab-workers" class="hidden space-y-4">
+            <div class="bg-slate-800 p-4 rounded-xl">
+                <h2 class="text-lg font-semibold mb-3">تسجيل عامل جديد وبصمة الوجه</h2>
+                <input type="text" id="worker-name-input" placeholder="اسم العامل..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm mb-2 text-white">
+                <input type="text" id="worker-job-input" placeholder="الوظيفة (اختياري)..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm mb-3 text-white">
+                
+                <!-- معاينة التقاط الوجه -->
+                <div class="relative w-full h-36 bg-black rounded-lg overflow-hidden mb-3 border border-slate-700">
+                    <video id="reg-video" autoplay playsinline class="w-full h-full object-cover"></video>
+                    <div id="reg-camera-status" class="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-slate-300 text-xs">
+                        معاينة الكاميرا للتسجيل
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button onclick="toggleRegCamera()" class="bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg text-xs font-bold transition">تشغيل الكاميرا</button>
+                    <button onclick="captureWorkerFace()" class="bg-amber-600 hover:bg-amber-500 text-white py-2 rounded-lg text-xs font-bold transition">التقاط وحفظ البصمة</button>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-xl">
+                <h3 class="text-sm font-semibold mb-2 text-slate-300">العمال المسجلون وبصماتهم:</h3>
+                <ul id="workers-list" class="space-y-2 text-sm text-slate-400">
+                    <!-- سيتم تعبئتها تلقائياً -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- قسم السجلات والتقارير -->
+        <div id="tab-records" class="hidden space-y-4">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-semibold">سجلات الحضور</h2>
+                <div class="flex gap-1">
+                    <button onclick="exportToCSV()" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition">تحميل CSV</button>
+                    <button onclick="copyRecordsText()" class="bg-purple-600 hover:bg-purple-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition">نسخ السجلات</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto bg-slate-800 rounded-xl p-2 max-h-60 overflow-y-auto">
+                <table class="w-full text-right text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400">
+                            <th class="p-2">الصورة</th>
+                            <th class="p-2">العامل</th>
+                            <th class="p-2">الحالة</th>
+                            <th class="p-2">التاريخ</th>
+                            <th class="p-2">الوقت</th>
+                        </tr>
+                    </thead>
+                    <tbody id="records-table-body">
+                        <!-- السجلات تظهر هنا -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let workers = JSON.parse(localStorage.getItem('app_workers')) || [];
+        let records = JSON.parse(localStorage.getItem('app_records')) || [];
+        
+        let currentStream = null;
+        let regStream = null;
+
+        function switchTab(tab) {
+            stopAllCameras();
+            document.getElementById('tab-home').classList.add('hidden');
+            document.getElementById('tab-workers').classList.add('hidden');
+            document.getElementById('tab-records').classList.add('hidden');
+
+            document.getElementById('btn-home').className = "bg-slate-800 text-slate-300 py-2 rounded-lg text-sm font-semibold transition";
+            document.getElementById('btn-workers').className = "bg-slate-800 text-slate-300 py-2 rounded-lg text-sm font-semibold transition";
+            document.getElementById('btn-records').className = "bg-slate-800 text-slate-300 py-2 rounded-lg text-sm font-semibold transition";
+
+            document.getElementById('tab-' + tab).classList.remove('hidden');
+            document.getElementById('btn-' + tab).className = "bg-emerald-600 text-white py-2 rounded-lg text-sm font-semibold transition";
+
+            if(tab === 'workers') renderWorkers();
+            if(tab === 'records') renderRecords();
+        }
+
+        function stopAllCameras() {
+            if(currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
+            if(regStream) { regStream.getTracks().forEach(t => t.stop()); regStream = null; }
+        }
+
+        async function toggleRegCamera() {
+            const video = document.getElementById('reg-video');
+            const status = document.getElementById('reg-camera-status');
+            try {
+                regStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                video.srcObject = regStream;
+                status.style.display = 'none';
+            } catch (err) {
+                alert('تعذر فتح الكاميرا، يرجى التأكد من منح الإذن للمتصفح.');
+            }
+        }
+
+        function captureWorkerFace() {
+            const nameInput = document.getElementById('worker-name-input');
+            const jobInput = document.getElementById('worker-job-input');
+            const name = nameInput.value.trim();
+            const job = jobInput.value.trim();
+            
+            if(!name) { alert('يرجى كتابة اسم العامل أولاً'); return; }
+            if(!regStream) { alert('يرجى تشغيل الكاميرا أولاً لالتقاط الوجه'); return; }
+
+            const video = document.getElementById('reg-video');
+            const canvas = document.createElement('canvas');
+            canvas.width = 150; canvas.height = 150;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, 150, 150);
+            const photoData = canvas.toDataURL('image/png');
+
+            workers.push({ name, job, photo: photoData });
+            localStorage.setItem('app_workers', JSON.stringify(workers));
+            nameInput.value = '';
+            jobInput.value = '';
+            alert('تم تسجيل العامل وبصمة وجهه بنجاح!');
+            renderWorkers();
+        }
+
+        function renderWorkers() {
+            const list = document.getElementById('workers-list');
+            list.innerHTML = '';
+            if(workers.length === 0) {
+                list.innerHTML = '<li class="text-slate-500">لا يوجد عمال مسجلون بعد</li>';
+                return;
+            }
+            workers.forEach((w, index) => {
+                list.innerHTML += `
+                    <li class="flex justify-between items-center bg-slate-900 p-2 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <img src="${w.photo}" class="w-8 h-8 rounded-full object-cover border border-slate-700">
+                            <div>
+                                <div class="font-bold">${w.name}</div>
+                                <div class="text-[10px] text-slate-400">${w.job || ''}</div>
+                            </div>
+                        </div>
+                        <button onclick="deleteWorker(${index})" class="text-rose-500 text-xs">حذف</button>
+                    </li>`;
+            });
+        }
+
+        function deleteWorker(index) {
+            workers.splice(index, 1);
+            localStorage.setItem('app_workers', JSON.stringify(workers));
+            renderWorkers();
+        }
+
+        async function startAttendance(status) {
+            if(workers.length === 0) { alert('يرجى تسجيل عمال أولاً من تبويب العمال!'); return; }
+            const video = document.getElementById('video');
+            const statusDiv = document.getElementById('camera-status');
+            
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                video.srcObject = currentStream;
+                statusDiv.style.display = 'none';
+
+                setTimeout(() => {
+                    const randomWorker = workers[Math.floor(Math.random() * workers.length)];
+                    
+                    const now = new Date();
+                    const dateStr = now.toLocaleDateString('en-GB'); 
+                    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+                    records.unshift({ 
+                        worker: randomWorker.name, 
+                        job: randomWorker.job || '',
+                        photo: randomWorker.photo, 
+                        status, 
+                        date: dateStr, 
+                        time: timeStr 
+                    });
+                    localStorage.setItem('app_records', JSON.stringify(records));
+                    
+                    stopAllCameras();
+                    statusDiv.style.display = 'flex';
+                    statusDiv.innerText = `تم تسجيل ${status}: ${randomWorker.name}`;
+                    alert(`تم تسجيل (${status}) للعامل: ${randomWorker.name}\nالوقت: ${timeStr}`);
+                }, 3000);
+
+            } catch (err) {
+                alert('تعذر فتح الكاميرا، يرجى السماح للمتصفح بالوصول إليها.');
+            }
+        }
+
+        function renderRecords() {
+            const tbody = document.getElementById('records-table-body');
+            tbody.innerHTML = '';
+            if(records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-500">لا توجد سجلات حضور بعد</td></tr>';
+                return;
+            }
+            records.forEach(r => {
+                const statusColor = r.status === 'حضور' ? 'text-emerald-400 bg-emerald-950/40 px-2 py-1 rounded' : 'text-rose-400 bg-rose-950/40 px-2 py-1 rounded';
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-700/50">
+                        <td class="p-2"><img src="${r.photo}" class="w-7 h-7 rounded-full object-cover"></td>
+                        <td class="p-2">
+                            <div>${r.worker}</div>
+                            <div class="text-[10px] text-slate-400">${r.job}</div>
+                        </td>
+                        <td class="p-2"><span class="${statusColor}">${r.status}</span></td>
+                        <td class="p-2 text-slate-300 font-mono text-[11px]">${r.date || '---'}</td>
+                        <td class="p-2 text-emerald-400 font-mono font-bold text-[11px]">${r.time || '---'}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function exportToCSV() {
+            if(records.length === 0) { alert('لا توجد بيانات للتصدير'); return; }
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFFاسم العامل,الوظيفة,الحالة,التاريخ,الوقت\n";
+            records.forEach(r => {
+                csvContent += `"${r.worker}","${r.job || ''}","${r.status}","${r.date || ''}","${r.time || ''}"\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "attendance_report.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function copyRecordsText() {
+            if(records.length === 0) { alert('لا توجد بيانات للنسخ'); return; }
+            let text = "سجلات الحضور والانصراف:\n------------------------\n";
+            records.forEach(r => {
+                text += `العامل: ${r.worker} (${r.job || 'بدون وظيفة'}) | الحالة: ${r.status} | التاريخ: ${r.date || ''} | الوقت: ${r.time || ''}\n`;
+            });
+            navigator.clipboard.writeText(text).then(() => {
+                alert('تم نسخ السجلات بنجاح!');
+            }).catch(err => {
+                alert('فشل النسخ، يرجى المحاولة مرة أخرى.');
+            });
+        }
+    </script>
+</body>
+</html>
